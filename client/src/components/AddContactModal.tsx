@@ -1,5 +1,5 @@
 import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -38,9 +38,12 @@ const AddContactModal: React.FC<AddContactModalProps> = ({ isOpen, onClose, onSu
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">افزودن مخاطب جدید</DialogTitle>
+          <DialogDescription className="text-sm text-gray-500">
+            لطفا اطلاعات مخاطب جدید را وارد کنید
+          </DialogDescription>
         </DialogHeader>
         
         <Form {...form}>
@@ -274,7 +277,7 @@ const AddContactModal: React.FC<AddContactModalProps> = ({ isOpen, onClose, onSu
               )}
             />
             
-            <div className="flex justify-end space-x-2 space-x-reverse">
+            <div className="flex justify-end space-x-2 space-x-reverse pt-2">
               <Button variant="outline" type="button" onClick={onClose}>
                 انصراف
               </Button>

@@ -1,6 +1,6 @@
 import React from "react";
 import { ContactDetailsProps } from "@/types";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Phone, Mail, MapPin, Briefcase, Home, User, X } from "lucide-react";
 import { GROUP_TRANSLATIONS, GENDER_TRANSLATIONS, GROUP_COLORS } from "@/types";
@@ -29,9 +29,12 @@ const ContactDetails: React.FC<ContactDetailsProps> = ({ isOpen, onClose, contac
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">اطلاعات مخاطب</DialogTitle>
+          <DialogDescription className="text-sm text-gray-500">
+            جزئیات کامل اطلاعات {contact.firstName} {contact.lastName}
+          </DialogDescription>
           <DialogClose asChild>
             <Button variant="ghost" size="icon" className="absolute left-2 top-2">
               <X className="h-4 w-4" />

@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { editContactSchema, CONTACT_GROUPS, GENDER_TYPES } from "@shared/schema";
+import { editContactSchema, CONTACT_GROUPS, GENDER_TYPES, ContactGroup, Contact } from "@shared/schema";
 import { EditContactModalProps } from "@/types";
 import { GROUP_TRANSLATIONS, GENDER_TRANSLATIONS } from "@/types";
 
@@ -19,10 +19,10 @@ const EditContactModal: React.FC<EditContactModalProps> = ({ isOpen, onClose, on
       firstName: "",
       lastName: "",
       phoneNumber: "",
-      group: "family" as const,
+      group: "family" as ContactGroup,
       position: "",
       officeHomeNumber: "",
-      gender: "male" as const,
+      gender: "male",
       additionalPhone1: "",
       additionalPhone2: "",
       additionalPhone3: "",
@@ -35,15 +35,24 @@ const EditContactModal: React.FC<EditContactModalProps> = ({ isOpen, onClose, on
   // Update form values when contact changes
   useEffect(() => {
     if (contact) {
+      // Validate that group and gender are valid types
+      const safeGroup = CONTACT_GROUPS.includes(contact.group as ContactGroup) 
+        ? contact.group as ContactGroup 
+        : "family";
+      
+      const safeGender = GENDER_TYPES.includes(contact.gender) 
+        ? contact.gender
+        : "male";
+
       form.reset({
         id: contact.id,
         firstName: contact.firstName || "",
         lastName: contact.lastName || "",
         phoneNumber: contact.phoneNumber || "",
-        group: contact.group || "family",
+        group: safeGroup,
         position: contact.position || "",
         officeHomeNumber: contact.officeHomeNumber || "",
-        gender: contact.gender || "male",
+        gender: safeGender,
         additionalPhone1: contact.additionalPhone1 || "",
         additionalPhone2: contact.additionalPhone2 || "",
         additionalPhone3: contact.additionalPhone3 || "",
@@ -55,16 +64,19 @@ const EditContactModal: React.FC<EditContactModalProps> = ({ isOpen, onClose, on
   }, [contact, form]);
 
   const handleSubmit = form.handleSubmit((data) => {
-    onSubmit(data);
+    onSubmit(data as Contact);
   });
 
   if (!contact) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">ویرایش مخاطب</DialogTitle>
+          <DialogDescription className="text-sm text-gray-500">
+            اطلاعات مخاطب را ویرایش کنید
+          </DialogDescription>
         </DialogHeader>
         
         <Form {...form}>
@@ -119,7 +131,7 @@ const EditContactModal: React.FC<EditContactModalProps> = ({ isOpen, onClose, on
                   <FormItem>
                     <FormLabel>گروه</FormLabel>
                     <Select 
-                      onValueChange={field.onChange}
+                      onValueChange={(value) => field.onChange(value as ContactGroup)}
                       defaultValue={field.value}
                       value={field.value}
                     >
@@ -300,7 +312,7 @@ const EditContactModal: React.FC<EditContactModalProps> = ({ isOpen, onClose, on
               )}
             />
             
-            <div className="flex justify-end space-x-2 space-x-reverse">
+            <div className="flex justify-end space-x-2 space-x-reverse pt-2">
               <Button variant="outline" type="button" onClick={onClose}>
                 انصراف
               </Button>
