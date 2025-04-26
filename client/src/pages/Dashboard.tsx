@@ -9,6 +9,26 @@ import DeleteConfirmation from "@/components/DeleteConfirmation";
 import { useContacts } from "@/hooks/useContacts";
 import { ContactGroup, Contact } from "@shared/schema";
 import { CONTACT_GROUPS } from "@shared/schema";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Phone, Mail, MapPin, Pencil, Trash2, Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { GROUP_TRANSLATIONS } from "@/types";
+
+// Function to get color for group label
+const getGroupColorClass = (group: string) => {
+  switch (group) {
+    case "family":
+      return "bg-blue-500";
+    case "colleagues":
+      return "bg-green-500";
+    case "friends":
+      return "bg-purple-500";
+    case "doctors":
+      return "bg-yellow-500";
+    default:
+      return "bg-gray-500";
+  }
+};
 
 const Dashboard: React.FC = () => {
   // State
@@ -105,7 +125,7 @@ const Dashboard: React.FC = () => {
         onViewModeChange={setViewMode}
       />
 
-      {/* Contacts grid or loading state */}
+      {/* Contacts grid/list or loading state */}
       {isLoading ? (
         <div className="flex justify-center items-center py-12">
           <div className="text-center">
@@ -126,7 +146,7 @@ const Dashboard: React.FC = () => {
             افزودن مخاطب جدید
           </Button>
         </div>
-      ) : (
+      ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {contacts.map((contact) => (
             <ContactCard
@@ -137,6 +157,79 @@ const Dashboard: React.FC = () => {
               onViewDetails={openDetailsModal}
             />
           ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>نام</TableHead>
+                <TableHead>گروه</TableHead>
+                <TableHead>شماره تماس</TableHead>
+                <TableHead>ایمیل</TableHead>
+                <TableHead className="text-left">عملیات</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {contacts.map((contact) => (
+                <TableRow key={contact.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center">
+                      <div className="text-base">
+                        {contact.firstName} {contact.lastName}
+                      </div>
+                      {contact.position && (
+                        <div className="text-xs text-gray-500 mr-2">
+                          ({contact.position})
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center">
+                      <span className={`w-2 h-2 rounded-full ml-2 ${getGroupColorClass(contact.group)}`}></span>
+                      <span>{GROUP_TRANSLATIONS[contact.group as keyof typeof GROUP_TRANSLATIONS] || contact.group}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center">
+                      <Phone className="h-4 w-4 ml-2 text-gray-400" />
+                      <span dir="ltr">{contact.phoneNumber}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>{contact.email || "-"}</TableCell>
+                  <TableCell>
+                    <div className="flex space-x-1 space-x-reverse">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => openDetailsModal(contact)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => openEditModal(contact)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                        onClick={() => openDeleteDialog(contact)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
 
@@ -174,6 +267,3 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
-
-// Import Button at the top
-import { Button } from "@/components/ui/button";
