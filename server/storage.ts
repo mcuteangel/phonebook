@@ -1,4 +1,6 @@
-import { contacts, type Contact, type InsertContact, type ContactFilters } from "@shared/schema";
+import { contacts as contactsTable, type Contact, type InsertContact, type ContactFilters } from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, asc, and, or, ilike, sql } from "drizzle-orm";
 
 // Interface for Contact Storage
 export interface IStorage {
@@ -9,6 +11,116 @@ export interface IStorage {
   deleteContact(id: number): Promise<boolean>;
 }
 
+// Database implementation of IStorage
+export class DatabaseStorage implements IStorage {
+  async getContacts(filters?: ContactFilters): Promise<Contact[]> {
+    let whereClause = '';
+    const params: any[] = [];
+    let paramIndex = 1;
+    
+    // Build WHERE clause if filters exist
+    if (filters) {
+      const conditions = [];
+      
+      // Filter by group
+      if (filters.group) {
+        conditions.push(`group = $${paramIndex++}`);
+        params.push(filters.group);
+      }
+      
+      // Filter by search term
+      if (filters.searchTerm) {
+        const searchTerm = `%${filters.searchTerm}%`;
+        conditions.push(`(
+          "firstName" ILIKE $${paramIndex} OR 
+          "lastName" ILIKE $${paramIndex} OR 
+          "phoneNumber" ILIKE $${paramIndex} OR
+          "email" ILIKE $${paramIndex} OR
+          "position" ILIKE $${paramIndex}
+        )`);
+        paramIndex++;
+        params.push(searchTerm);
+      }
+      
+      if (conditions.length > 0) {
+        whereClause = `WHERE ${conditions.join(' AND ')}`;
+      }
+    }
+    
+    // Build ORDER BY clause
+    let orderByClause = 'ORDER BY "lastName" ASC';
+    if (filters?.sortBy) {
+      const direction = filters.sortDirection === 'desc' ? 'DESC' : 'ASC';
+      
+      if (filters.sortBy === 'firstName') {
+        orderByClause = `ORDER BY "firstName" ${direction}`;
+      } else if (filters.sortBy === 'lastName') {
+        orderByClause = `ORDER BY "lastName" ${direction}`;
+      }
+    }
+    
+    // Combine the query
+    const query = `
+      SELECT * FROM "contacts"
+      ${whereClause}
+      ${orderByClause}
+    `;
+    
+    // Execute the query
+    const result = await pool.query(query, params);
+    return result.rows as Contact[];
+  }
+
+  async getContact(id: number): Promise<Contact | undefined> {
+    const result = await pool.query('SELECT * FROM "contacts" WHERE id = $1', [id]);
+    return result.rows[0] as Contact | undefined;
+  }
+
+  async createContact(contact: InsertContact): Promise<Contact> {
+    // Build column names and value placeholders
+    const columns = Object.keys(contact).map(key => `"${key}"`).join(', ');
+    const placeholders = Object.keys(contact).map((_, index) => `$${index + 1}`).join(', ');
+    const values = Object.values(contact);
+    
+    const query = `
+      INSERT INTO "contacts" (${columns})
+      VALUES (${placeholders})
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, values);
+    return result.rows[0] as Contact;
+  }
+
+  async updateContact(id: number, contactData: Partial<InsertContact>): Promise<Contact | undefined> {
+    // If no data to update, return early
+    if (Object.keys(contactData).length === 0) {
+      return this.getContact(id);
+    }
+    
+    // Build SET clause
+    const setItems = Object.keys(contactData).map((key, index) => `"${key}" = $${index + 1}`);
+    const setClause = setItems.join(', ');
+    const values = [...Object.values(contactData), id];
+    
+    const query = `
+      UPDATE "contacts"
+      SET ${setClause}
+      WHERE id = $${values.length}
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, values);
+    return result.rows[0] as Contact | undefined;
+  }
+
+  async deleteContact(id: number): Promise<boolean> {
+    const result = await pool.query('DELETE FROM "contacts" WHERE id = $1 RETURNING id', [id]);
+    return result.rowCount > 0;
+  }
+}
+
+// Memory implementation (keeping as reference, but not using)
 export class MemStorage implements IStorage {
   private contacts: Map<number, Contact>;
   private currentId: number;
@@ -88,4 +200,5 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Using database storage instead of memory storage
+export const storage = new DatabaseStorage();

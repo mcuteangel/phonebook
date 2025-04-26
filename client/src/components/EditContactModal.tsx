@@ -40,8 +40,9 @@ const EditContactModal: React.FC<EditContactModalProps> = ({ isOpen, onClose, on
         ? contact.group as ContactGroup 
         : "family";
       
-      const safeGender = GENDER_TYPES.includes(contact.gender) 
-        ? contact.gender
+      // Make sure gender is one of the allowed values
+      const safeGender = GENDER_TYPES.includes(contact.gender as any) 
+        ? contact.gender as "male" | "female" | "other"
         : "male";
 
       form.reset({
