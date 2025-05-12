@@ -1,5 +1,5 @@
 import { contacts as contactsTable, type Contact, type InsertContact, type ContactFilters } from "@shared/schema";
-import { db, pool } from "./db";
+import { initDatabase } from "./db";
 import { eq, desc, asc, and, or, ilike, sql } from "drizzle-orm";
 
 // Interface for Contact Storage
@@ -13,7 +13,12 @@ export interface IStorage {
 
 // Database implementation of IStorage
 export class DatabaseStorage implements IStorage {
+  private async getDb() {
+    return await initDatabase();
+  }
+
   async getContacts(filters?: ContactFilters): Promise<Contact[]> {
+    const db = await this.getDb();
     let query = db.select().from(contactsTable);
     const whereConditions = [];
     
@@ -29,11 +34,11 @@ export class DatabaseStorage implements IStorage {
         const searchTerm = `%${filters.searchTerm}%`;
         whereConditions.push(
           sql`(
-            ${contactsTable.firstName} ILIKE ${searchTerm} OR
-            ${contactsTable.lastName} ILIKE ${searchTerm} OR
-            ${contactsTable.phoneNumber} ILIKE ${searchTerm} OR
-            ${contactsTable.email} ILIKE ${searchTerm} OR
-            ${contactsTable.position} ILIKE ${searchTerm}
+            ${contactsTable.firstName} LIKE ${searchTerm} OR
+            ${contactsTable.lastName} LIKE ${searchTerm} OR
+            ${contactsTable.phoneNumber} LIKE ${searchTerm} OR
+            ${contactsTable.email} LIKE ${searchTerm} OR
+            ${contactsTable.position} LIKE ${searchTerm}
           )`
         );
       }
@@ -75,6 +80,7 @@ export class DatabaseStorage implements IStorage {
 
   async getContact(id: number): Promise<Contact | undefined> {
     try {
+      const db = await this.getDb();
       const [contact] = await db
         .select()
         .from(contactsTable)
@@ -89,6 +95,7 @@ export class DatabaseStorage implements IStorage {
 
   async createContact(contact: InsertContact): Promise<Contact> {
     try {
+      const db = await this.getDb();
       const [newContact] = await db
         .insert(contactsTable)
         .values(contact)
@@ -103,6 +110,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateContact(id: number, contactData: Partial<InsertContact>): Promise<Contact | undefined> {
     try {
+      const db = await this.getDb();
       const [updatedContact] = await db
         .update(contactsTable)
         .set(contactData)
@@ -118,6 +126,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteContact(id: number): Promise<boolean> {
     try {
+      const db = await this.getDb();
       const result = await db
         .delete(contactsTable)
         .where(eq(contactsTable.id, id))
@@ -131,85 +140,5 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Memory implementation (keeping as reference, but not using)
-export class MemStorage implements IStorage {
-  private contacts: Map<number, Contact>;
-  private currentId: number;
-
-  constructor() {
-    this.contacts = new Map();
-    this.currentId = 1;
-  }
-
-  async getContacts(filters?: ContactFilters): Promise<Contact[]> {
-    let results = Array.from(this.contacts.values());
-
-    // Apply group filter if provided
-    if (filters?.group) {
-      results = results.filter(contact => contact.group === filters.group);
-    }
-
-    // Apply search term filter if provided
-    if (filters?.searchTerm) {
-      const searchLower = filters.searchTerm.toLowerCase();
-      results = results.filter(contact => 
-        contact.firstName.toLowerCase().includes(searchLower) ||
-        contact.lastName.toLowerCase().includes(searchLower) ||
-        contact.phoneNumber.includes(searchLower) ||
-        (contact.position && contact.position.toLowerCase().includes(searchLower)) ||
-        (contact.email && contact.email.toLowerCase().includes(searchLower))
-      );
-    }
-
-    // Apply sorting
-    if (filters?.sortBy) {
-      const direction = filters.sortDirection === 'desc' ? -1 : 1;
-      results.sort((a, b) => {
-        switch (filters.sortBy) {
-          case 'lastName':
-            return direction * a.lastName.localeCompare(b.lastName);
-          case 'firstName':
-            return direction * a.firstName.localeCompare(b.firstName);
-          default:
-            return 0;
-        }
-      });
-    } else {
-      // Default sort by last name
-      results.sort((a, b) => a.lastName.localeCompare(b.lastName));
-    }
-
-    return results;
-  }
-
-  async getContact(id: number): Promise<Contact | undefined> {
-    return this.contacts.get(id);
-  }
-
-  async createContact(contactData: InsertContact): Promise<Contact> {
-    const id = this.currentId++;
-    const contact: Contact = { ...contactData, id };
-    this.contacts.set(id, contact);
-    return contact;
-  }
-
-  async updateContact(id: number, contactData: Partial<InsertContact>): Promise<Contact | undefined> {
-    const existingContact = this.contacts.get(id);
-    
-    if (!existingContact) {
-      return undefined;
-    }
-
-    const updatedContact: Contact = { ...existingContact, ...contactData };
-    this.contacts.set(id, updatedContact);
-    
-    return updatedContact;
-  }
-
-  async deleteContact(id: number): Promise<boolean> {
-    return this.contacts.delete(id);
-  }
-}
-
-// Using database storage instead of memory storage
+// Using database storage
 export const storage = new DatabaseStorage();
